@@ -51,20 +51,92 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     // context.Database.Migrate(); // migration might be already applied
-    if (!context.Users.Any())
+    
+    if (!context.Roles.Any())
     {
-        context.Users.AddRange(
-            new User { Login = "user", Password = "123", Role_id = 1 },
-            new User { Login = "manager", Password = "123", Role_id = 2 },
-            new User { Login = "admin", Password = "123", Role_id = 3 }
+        context.Roles.AddRange(
+            new Role { Name = "User" },
+            new Role { Name = "Manager" },
+            new Role { Name = "Admin" }
         );
         context.SaveChanges();
     }
+
+    if (!context.Users.Any())
+    {
+        var userRole = context.Roles.First(r => r.Name == "User");
+        var managerRole = context.Roles.First(r => r.Name == "Manager");
+        var adminRole = context.Roles.First(r => r.Name == "Admin");
+
+        context.Users.AddRange(
+            new User { Login = "user", Password = "123", Role_id = userRole.Id },
+            new User { Login = "manager", Password = "123", Role_id = managerRole.Id },
+            new User { Login = "admin", Password = "123", Role_id = adminRole.Id }
+        );
+        context.SaveChanges();
+    }
+
+    if (!context.EquipmentTypes.Any())
+    {
+        context.EquipmentTypes.AddRange(
+            new EquipmentType { Name = "Компьютер" },
+            new EquipmentType { Name = "Принтер" },
+            new EquipmentType { Name = "Сервер" },
+            new EquipmentType { Name = "Монитор" }
+        );
+        context.SaveChanges();
+    }
+
+    if (!context.EquipmentStatuses.Any())
+    {
+        context.EquipmentStatuses.AddRange(
+            new EquipmentStatus { Name = "В работе" },
+            new EquipmentStatus { Name = "В ремонте" },
+            new EquipmentStatus { Name = "Списано" }
+        );
+        context.SaveChanges();
+    }
+
+    if (!context.Employees.Any())
+    {
+        context.Employees.AddRange(
+            new Employee { FullName = "Иванов И.И." },
+            new Employee { FullName = "Петров П.П." },
+            new Employee { FullName = "Сидоров С.С." }
+        );
+        context.SaveChanges();
+    }
+
     if (!context.Equipment.Any())
     {
+        var typeComputer = context.EquipmentTypes.First(t => t.Name == "Компьютер");
+        var typePrinter = context.EquipmentTypes.First(t => t.Name == "Принтер");
+
+        var statusWorking = context.EquipmentStatuses.First(s => s.Name == "В работе");
+        var statusRepair = context.EquipmentStatuses.First(s => s.Name == "В ремонте");
+
+        var empIvanov = context.Employees.First(e => e.FullName == "Иванов И.И.");
+        var empPetrov = context.Employees.First(e => e.FullName == "Петров П.П.");
+
         context.Equipment.AddRange(
-            new EquipmentItem { InventoryNumber = "INV001", Name = "Laptop Dell", Type = "Computer", SerialNumber = "SN123", Status = "Работает", ResponsiblePerson = "Иванов И.И." },
-            new EquipmentItem { InventoryNumber = "INV002", Name = "Printer HP", Type = "Printer", SerialNumber = "SN456", Status = "В ремонте", ResponsiblePerson = "Петров П.П." }
+            new EquipmentItem 
+            { 
+                InventoryNumber = "INV001", 
+                Name = "Laptop Dell", 
+                EquipmentTypeId = typeComputer.Id, 
+                SerialNumber = "SN123", 
+                EquipmentStatusId = statusWorking.Id, 
+                EmployeeId = empIvanov.Id 
+            },
+            new EquipmentItem 
+            { 
+                InventoryNumber = "INV002", 
+                Name = "Printer HP", 
+                EquipmentTypeId = typePrinter.Id, 
+                SerialNumber = "SN456", 
+                EquipmentStatusId = statusRepair.Id, 
+                EmployeeId = empPetrov.Id 
+            }
         );
         context.SaveChanges();
     }
