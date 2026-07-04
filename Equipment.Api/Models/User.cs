@@ -10,6 +10,6 @@ namespace Equipment.Api.Models
 
         public string Login { get; set; } = string.Empty;    // Логин
         public string Password { get; set; } = string.Empty; // Пароль (хранится в открытом виде)
-        public string Role { get; set; } = string.Empty;     // Роль: Admin или User
+        public int Role_id { get; set; }     // Роль: 1 = User, 2 = Manager, 3 = Admin
     }
 }

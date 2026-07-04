@@ -1,25 +1,33 @@
 using Equipment.Client.Models;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.JSInterop;
 
 namespace Equipment.Client.Services
 {
-    // Сервис авторизации — отвечает за вход, выход и хранение токена
     public class AuthService
     {
         private readonly HttpClient _httpClient;
         private readonly IJSRuntime _jsRuntime;
 
-        public string? Token { get; private set; }      // Текущий JWT токен
-        public string? UserRole { get; private set; }    // Роль пользователя (Admin/Manager/User)
-        public string? UserLogin { get; private set; }   // Логин пользователя
-        public bool IsAuthenticated => !string.IsNullOrWhiteSpace(Token); // Авторизован ли
-        public bool IsAdmin => UserRole == "Admin";      // Является ли администратором
-        public bool IsManager => UserRole == "Manager";  // Является ли менеджером
-        public bool CanViewDetails => IsAdmin || IsManager; // Может ли просматривать детали
+        public string? Token { get; private set; }
+        public int? RoleId { get; private set; }
+        public string? UserLogin { get; private set; }
+        public bool IsAuthenticated => !string.IsNullOrWhiteSpace(Token);
+        public bool IsAdmin => RoleId == 3;
+        public bool IsManager => RoleId == 2;
+        public bool IsUser => RoleId == 1;
+        public bool CanViewDetails => IsAdmin || IsManager;
+        
+        public string UserRole 
+        { 
+            get 
+            {
+                if (RoleId == 3) return "Admin";
+                if (RoleId == 2) return "Manager";
+                if (RoleId == 1) return "User";
+                return string.Empty;
+            }
+        }
 
         public AuthService(HttpClient httpClient, IJSRuntime jsRuntime)
         {
@@ -27,7 +35,6 @@ namespace Equipment.Client.Services
             _jsRuntime = jsRuntime;
         }
 
-        // Вход в систему — отправляет логин/пароль на API, получает токен
         public async Task<bool> LoginAsync(LoginRequest request)
         {
             try
@@ -43,10 +50,12 @@ namespace Equipment.Client.Services
                     return false;
 
                 Token = result.Token;
-                ParseToken(Token); // Извлекаем роль из токена
+                RoleId = result.RoleId;
+                UserLogin = result.Login;
 
-                // Сохраняем токен в LocalStorage
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "token", Token);
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "roleId", RoleId.ToString());
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "userLogin", UserLogin);
 
                 return true;
             }
@@ -56,53 +65,48 @@ namespace Equipment.Client.Services
             }
         }
 
-        // Загрузка сессии из LocalStorage (при обновлении страницы)
         public async Task LoadSessionAsync()
         {
             try
             {
                 Token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+                var roleIdStr = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "roleId");
+                UserLogin = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "userLogin");
 
-                if (!string.IsNullOrWhiteSpace(Token))
+                if (!string.IsNullOrWhiteSpace(Token) && int.TryParse(roleIdStr, out var roleId))
                 {
-                    ParseToken(Token);
+                    RoleId = roleId;
+                }
+                else
+                {
+                    Token = null;
+                    RoleId = null;
+                    UserLogin = null;
                 }
             }
             catch
             {
                 Token = null;
-                UserRole = null;
+                RoleId = null;
                 UserLogin = null;
             }
         }
 
-        // Выход из системы — удаляем токен из памяти и LocalStorage
         public async Task LogoutAsync()
         {
+            if (!string.IsNullOrWhiteSpace(Token))
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/logout");
+                request.Headers.Add("Autorization", Token);
+                try { await _httpClient.SendAsync(request); } catch { }
+            }
+
             Token = null;
-            UserRole = null;
+            RoleId = null;
             UserLogin = null;
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "token");
-        }
-
-        // Извлекаем роль и логин из JWT токена (без обращения к серверу)
-        private void ParseToken(string token)
-        {
-            try
-            {
-                var handler = new JwtSecurityTokenHandler();
-                var jwt = handler.ReadJwtToken(token);
-
-                UserRole = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role
-                    || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;
-                UserLogin = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name
-                    || c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value;
-            }
-            catch
-            {
-                UserRole = null;
-                UserLogin = null;
-            }
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "roleId");
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "userLogin");
         }
     }
 }

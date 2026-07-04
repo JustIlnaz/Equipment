@@ -17,11 +17,14 @@ namespace Equipment.Client.Services
             _authService = authService;
         }
 
-        // Добавляем JWT токен к каждому запросу
+        // Добавляем custom токен к каждому запросу
         private void SetAuthHeader()
         {
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _authService.Token);
+            _httpClient.DefaultRequestHeaders.Remove("Autorization");
+            if (!string.IsNullOrWhiteSpace(_authService.Token))
+            {
+                _httpClient.DefaultRequestHeaders.Add("Autorization", _authService.Token);
+            }
         }
 
         // Получить список всего оборудования

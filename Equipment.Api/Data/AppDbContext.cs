@@ -12,6 +12,7 @@ namespace Equipment.Api.Data
 
         public DbSet<EquipmentItem> Equipment { get; set; } // Таблица оборудования
         public DbSet<User> Users { get; set; }               // Таблица пользователей
+        public DbSet<Session> Sessions { get; set; }
 
         // Данные заполняются пользователем в БД напрямую
     }

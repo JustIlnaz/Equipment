@@ -1,4 +1,5 @@
 using Equipment.Api.Data;
+using Equipment.Api.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -45,6 +46,29 @@ if (app.Environment.IsDevelopment())
 
 // Порядок middleware важен: сначала аутентификация, потом авторизация
 
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // context.Database.Migrate(); // migration might be already applied
+    if (!context.Users.Any())
+    {
+        context.Users.AddRange(
+            new User { Login = "user", Password = "123", Role_id = 1 },
+            new User { Login = "manager", Password = "123", Role_id = 2 },
+            new User { Login = "admin", Password = "123", Role_id = 3 }
+        );
+        context.SaveChanges();
+    }
+    if (!context.Equipment.Any())
+    {
+        context.Equipment.AddRange(
+            new EquipmentItem { InventoryNumber = "INV001", Name = "Laptop Dell", Type = "Computer", SerialNumber = "SN123", Status = "Работает", ResponsiblePerson = "Иванов И.И." },
+            new EquipmentItem { InventoryNumber = "INV002", Name = "Printer HP", Type = "Printer", SerialNumber = "SN456", Status = "В ремонте", ResponsiblePerson = "Петров П.П." }
+        );
+        context.SaveChanges();
+    }
+}
 
 app.MapControllers();
 

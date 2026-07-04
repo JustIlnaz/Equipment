@@ -4,5 +4,7 @@ namespace Equipment.Client.Models
     public class LoginResponse
     {
         public string Token { get; set; } = string.Empty;
+        public int RoleId { get; set; }
+        public string Login { get; set; } = string.Empty;
     }
 }
