@@ -1,0 +1,95 @@
+@page "/equipment/{Id:int}"
+@inject EquipmentService EquipmentService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Просмотр оборудования</PageTitle>
+
+<h3>Просмотр оборудования</h3>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-error">@errorMessage</div>
+}
+
+@if (item == null)
+{
+    <p>Загрузка...</p>
+}
+else
+{
+    <div class="card">
+        <div class="detail-row"><strong>ID:</strong> @item.Id</div>
+        <div class="detail-row"><strong>Инвентарный номер:</strong> @item.InventoryNumber</div>
+        <div class="detail-row"><strong>Название:</strong> @item.Name</div>
+        <div class="detail-row"><strong>Тип:</strong> @item.Type</div>
+        <div class="detail-row"><strong>Серийный номер:</strong> @item.SerialNumber</div>
+        <div class="detail-row"><strong>Статус:</strong> @item.Status</div>
+        <div class="detail-row"><strong>Ответственный:</strong> @item.ResponsiblePerson</div>
+    </div>
+
+    <br />
+
+    <button class="btn" @onclick="GoBack">Назад к списку</button>
+
+    @if (AuthService.IsAdmin)
+    {
+        <button class="btn btn-edit" @onclick="GoToEdit">Редактировать</button>
+        <button class="btn btn-danger" @onclick="DeleteItem">Удалить</button>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EquipmentItem? item;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.LoadSessionAsync();
+
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!AuthService.CanViewDetails)
+        {
+            Navigation.NavigateTo("/equipment");
+            return;
+        }
+
+        item = await EquipmentService.GetByIdAsync(Id);
+
+        if (item == null)
+            errorMessage = "Оборудование не найдено.";
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/equipment");
+    private void GoToEdit() => Navigation.NavigateTo($"/equipment/edit/{Id}");
+
+    // Удаление с подтверждением через JavaScript confirm
+    private async Task DeleteItem()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Вы уверены, что хотите удалить это оборудование?");
+
+        if (!confirmed) return;
+
+        var response = await EquipmentService.DeleteAsync(Id);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            errorMessage = "Недостаточно прав для выполнения операции.";
+            return;
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/equipment");
+        }
+    }
+}

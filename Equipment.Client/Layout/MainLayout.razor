@@ -1,0 +1,45 @@
+@using Equipment.Client.Services
+@inherits LayoutComponentBase
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="layout">
+    <header class="navbar">
+        <div class="container">
+            <a href="/" class="logo">Учёт оборудования</a>
+            <nav class="nav-links">
+                @if (AuthService.IsAuthenticated)
+                {
+                    <a href="/equipment" class="nav-link">Оборудование</a>
+                    <span class="nav-user">@AuthService.UserLogin (@AuthService.UserRole)</span>
+                    <button class="btn btn-logout" @onclick="LogoutAsync">Выход</button>
+                }
+            </nav>
+        </div>
+    </header>
+
+    <main class="content">
+        <div class="container">
+            @Body
+        </div>
+    </main>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // При загрузке страницы проверяем есть ли сохранённый токен
+            await AuthService.LoadSessionAsync();
+            StateHasChanged();
+        }
+    }
+
+    // Выход из системы
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

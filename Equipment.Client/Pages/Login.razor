@@ -1,0 +1,61 @@
+@page "/"
+@page "/login"
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Вход — Учёт оборудования</PageTitle>
+
+<div class="auth-page">
+    <div class="card auth-card">
+        <h2 class="form-title">Вход в систему</h2>
+        <p class="form-subtitle">Введите логин и пароль</p>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-error">@errorMessage</div>
+        }
+
+        <div class="form-group">
+            <label class="form-label">Логин</label>
+            <input class="form-control" @bind="loginRequest.Login" placeholder="Введите логин" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Пароль</label>
+            <input class="form-control" @bind="loginRequest.Password" type="password" placeholder="Введите пароль" />
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary w-100" @onclick="HandleLogin">Войти</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new LoginRequest();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Если уже авторизован — сразу переходим к списку
+        await AuthService.LoadSessionAsync();
+        if (AuthService.IsAuthenticated)
+            Navigation.NavigateTo("/equipment");
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+
+        var success = await AuthService.LoginAsync(loginRequest);
+
+        if (success)
+        {
+            Navigation.NavigateTo("/equipment");
+        }
+        else
+        {
+            errorMessage = "Неверный логин или пароль.";
+        }
+    }
+}
